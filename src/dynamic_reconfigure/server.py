@@ -44,6 +44,10 @@ except:
 import rospy
 import threading
 import copy
+try:
+    import thread
+except ImportError:
+    import _thread as thread
 
 from dynamic_reconfigure import DynamicReconfigureCallbackException
 from dynamic_reconfigure.encoding import decode_config, encode_config, encode_description, extract_params, get_tree, initial_config
@@ -100,8 +104,25 @@ class Server(object):
         for param in extract_params(self.type.config_description):
             rospy.set_param(self.ns + param['name'], self.config[param['name']])
 
+    def _quit_callback(self):
+        thread.interrupt_main()
+
     def _change_config(self, config, level):
-        self.config = self.callback(config, level)
+        # TODO(lucasw) Need to have this timeout in case the callback never
+        # return, otherwise the client will lock up when it tries to update
+        # the server.
+        # https://stackoverflow.com/questions/492519/timeout-on-a-function-call
+        callback_timeout = 1.0
+        timer = threading.Timer(callback_timeout, self._quit_callback,
+                                args=[])
+        timer.start()
+        self.config = None
+        try:
+            self.config = self.callback(config, level)
+        except threading.KeyboardInterrupt:
+            rospy.logerr("callback has taken too long, is possibly locked up")
+        finally:
+            timer.cancel()
         if self.config is None:
             msg = 'Reconfigure callback should return a possibly updated configuration.'
             rospy.logerr(msg)
