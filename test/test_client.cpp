@@ -71,6 +71,20 @@ TEST(dynamic_reconfigure_simple_client, Constructor) {
   client.setDescriptionCallback(&descriptionCallback);
 }
 
+// get a string defined in the launch file that should override the default
+TEST(dynamic_reconfigure_simple_client, getStrConfig) {
+  Client<TestConfig> client("/ref_server2", &configurationCallback,
+                            &descriptionCallback);
+  EXPECT_TRUE(client.getCurrentConfiguration(CONFIG));
+  EXPECT_EQ("134x", CONFIG.str_);
+
+  Client<TestConfig> client2("/ref_server3", &configurationCallback,
+                            &descriptionCallback);
+  EXPECT_TRUE(client2.getCurrentConfiguration(CONFIG));
+  EXPECT_EQ("134", CONFIG.str_);
+
+}
+
 TEST(dynamic_reconfigure_simple_client, getConfigs) {
   Client<TestConfig> client("/ref_server", &configurationCallback,
                             &descriptionCallback);
@@ -118,6 +132,27 @@ TEST(dynamic_reconfigure_simple_client, setGetConfig) {
   EXPECT_TRUE(client.setConfiguration(cfg));
   EXPECT_TRUE(client.getCurrentConfiguration(CONFIG));
   EXPECT_EQ(5, CONFIG.int_);
+}
+
+TEST(dynamic_reconfigure_simple_client, setGetStrConfig) {
+  ROS_INFO("Setting configuration");
+  Client<TestConfig> client("/ref_server", &configurationCallback,
+                            &descriptionCallback);
+  TestConfig cfg = TestConfig::__getDefault__();
+  EXPECT_TRUE(client.setConfiguration(cfg));
+  cfg.str_ = "foo";
+  EXPECT_TRUE(client.setConfiguration(cfg));
+  EXPECT_EQ("foo", cfg.str_);
+  EXPECT_TRUE(client.getCurrentConfiguration(CONFIG));
+  EXPECT_EQ("foo", CONFIG.str_);
+  cfg.str_ = "bar";
+  EXPECT_TRUE(client.setConfiguration(cfg));
+  EXPECT_TRUE(client.getCurrentConfiguration(CONFIG));
+  EXPECT_EQ("bar", CONFIG.str_);
+  cfg.str_ = "5";
+  EXPECT_TRUE(client.setConfiguration(cfg));
+  EXPECT_TRUE(client.getCurrentConfiguration(CONFIG));
+  EXPECT_EQ("5", CONFIG.str_);
 }
 
 TEST(dynamic_reconfigure_simple_client, multipleClients) {
