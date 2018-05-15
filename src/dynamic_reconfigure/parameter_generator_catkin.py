@@ -460,6 +460,7 @@ Have a nice day
         # Write the configuration manipulator.
         self.mkdirabs(self.cpp_gen_dir)
         paramdescr = []
+        paraminit = []
         groups = []
         members = []
         constants = []
@@ -472,6 +473,10 @@ Have a nice day
             else:
                 paramdescr.append(Template("${configname}Config::GroupDescription<${configname}Config::${class}, ${configname}Config::${parentclass}> ${name}(\"${name}\", \"${type}\", ${parent}, ${id}, ${cstate}, &${configname}Config::${field});").safe_substitute(group.to_dict(), configname=self.name))
             for param in group.parameters:
+                if len(paraminit) > 0:
+                    self.appendline(paraminit, "${name}($v), ", param, "default")
+                else:
+                    self.appendline(paraminit, " : ${name}($v), ", param, "default")
                 self.appendline(members, "${ctype} ${name};", param)
                 self.appendline(paramdescr, "__min__.${name} = $v;", param, "min")
                 self.appendline(paramdescr, "__max__.${name} = $v;", param, "max")
@@ -500,6 +505,9 @@ Have a nice day
         self.appendgroup(groups, self.group)
 
         paramdescr = '\n'.join(paramdescr)
+        paraminit = ' '.join(paraminit)
+        # chop off trailing ", "
+        paraminit = paraminit[:-2]
         members = '\n'.join(members)
         constants = '\n'.join(constants)
         groups = '\n'.join(groups)
@@ -507,6 +515,7 @@ Have a nice day
             f.write(Template(template).substitute(
                 uname=self.name.upper(),
                 configname=self.name, pkgname=self.pkgname, paramdescr=paramdescr,
+                paraminit=paraminit,
                 members=members, groups=groups, doline=LINEDEBUG, constants=constants))
         print("Wrote header file in " + os.path.join(self.cpp_gen_dir, self.name + "Config.h"))
 
